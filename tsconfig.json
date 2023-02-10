@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "module": "ESNext",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "es2019",
+    "lib": ["es2019", "DOM"],
+    "noImplicitAny": true,
+    "moduleResolution": "Node",
+    "declaration": true,
+    "sourceMap": true,
+    "resolveJsonModule": true,
+    "outDir": "./lib",
+    "rootDir": ".",
+    "types": ["node"],
+    "typeRoots": ["types.ts"],
+    "skipLibCheck": true,
+    "experimentalDecorators": true
+  },
+  "include": ["./**/**/*.ts", "types.ts"],
+  "exclude": ["lib", "package"]
+}

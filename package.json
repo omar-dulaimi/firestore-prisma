@@ -1,0 +1,45 @@
+{
+  "name": "firestore-prisma",
+  "version": "0.0.1",
+  "description": "Convert Firestore data into a Prisma schema",
+  "repository": "https://github.com/omar-dulaimi/firestore-prisma",
+  "bin": {
+    "firestore-prisma": "lib/bin/index.js"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "debug": "npm run build && node lib/bin -f sample-firestore.json",
+    "clean": "rm -rf lib",
+    "package:publish": "./package.sh && cd package && npm publish"
+  },
+  "author": {
+    "name": "Omar Dulaimi",
+    "url": "https://github.com/omar-dulaimi"
+  },
+  "keywords": [
+    "firestore",
+    "firestore-prisma"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@mrleebo/prisma-ast": "^0.5.1",
+    "boxen": "^4.0.0",
+    "chalk": "^4.1.0",
+    "clear": "^0.1.0",
+    "commander": "^9.4.1",
+    "figlet": "^1.5.2",
+    "ora": "^6.1.2"
+  },
+  "devDependencies": {
+    "@types/clear": "^0.1.2",
+    "@types/figlet": "^1.5.5",
+    "@types/node": "^17.0.35",
+    "typescript": "^4.7.2"
+  },
+  "bugs": {
+    "url": "https://github.com/omar-dulaimi/firestore-prisma/issues"
+  },
+  "homepage": "https://github.com/omar-dulaimi/firestore-prisma#readme",
+  "private": true
+}
