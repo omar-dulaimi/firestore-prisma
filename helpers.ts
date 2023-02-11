@@ -45,11 +45,22 @@ const determineDataType = (value: any): string => {
   }
 };
 
-const buildJsonSchema = (data: FirestoreData, result: JsonSchema = {}): any => {
-  const spinner = ora('   JSON Schema');
-  spinner.color = 'yellow';
-  spinner.prefixText = chalk.yellow('build');
-  spinner.start();
+const buildJsonSchema = ({
+  data,
+  result = {},
+  source = 'file',
+}: {
+  data: FirestoreData;
+  result?: JsonSchema;
+  source: 'file' | 'memory';
+}): any => {
+  let spinner;
+  if (source === 'file') {
+    spinner = ora('   JSON Schema');
+    spinner.color = 'yellow';
+    spinner.prefixText = chalk.yellow('build');
+    spinner.start();
+  }
   const { [COLLECTIONS_KEY]: collections = {} } = data;
 
   Object.entries(collections).forEach(([collName, collValue]) => {
@@ -58,12 +69,14 @@ const buildJsonSchema = (data: FirestoreData, result: JsonSchema = {}): any => {
     }
     Object.entries(collValue).forEach(([, collFieldValue]) => {
       if (!Array.isArray(collFieldValue)) {
-        buildJsonSchemaForField({ collName, collFieldValue, result });
+        buildJsonSchemaForField({ collName, collFieldValue, result, source });
       }
     });
   });
 
-  spinner.stopAndPersist();
+  if (source === 'file') {
+    spinner.stopAndPersist();
+  }
   return result;
 };
 
@@ -71,10 +84,12 @@ const buildJsonSchemaForField = ({
   collName,
   collFieldValue,
   result,
+  source = 'file',
 }: {
   collName: string;
   collFieldValue: any;
   result: JsonSchema;
+  source: 'file' | 'memory';
 }) => {
   for (const [key, value] of Object.entries(collFieldValue)) {
     switch (key) {
@@ -92,7 +107,7 @@ const buildJsonSchemaForField = ({
           });
         }
         // @ts-ignore
-        buildJsonSchema({ [COLLECTIONS_KEY]: value }, result);
+        buildJsonSchema({ data: { [COLLECTIONS_KEY]: value }, result, source });
         break;
       default:
         const type = determineDataType(value);
@@ -110,10 +125,13 @@ export const buildPrismaSchema = async (
   source: 'file' | 'memory' = 'file',
   firestoreDataText?: string,
 ) => {
-  let spinner = ora('Prisma Schema');
-  spinner.color = 'green';
-  spinner.prefixText = chalk.cyan('generate');
-  spinner.start();
+  let spinner;
+  if (source === 'file') {
+    spinner = ora('Prisma Schema');
+    spinner.color = 'green';
+    spinner.prefixText = chalk.cyan('generate');
+    spinner.start();
+  }
   let firestoreData: FirestoreData;
   let output;
   try {
@@ -133,7 +151,7 @@ export const buildPrismaSchema = async (
     const builder = createPrismaSchemaBuilder();
     builder.generator('client', 'prisma-client-js');
     builder.datasource('"postgresql"', '');
-    const jsonSchema = buildJsonSchema(firestoreData);
+    const jsonSchema = buildJsonSchema({ data: firestoreData, source });
     if (source === 'file') {
       await fs.promises.writeFile(
         path.join(process.cwd(), options.jsonSchemaPath),
@@ -180,7 +198,10 @@ export const buildPrismaSchema = async (
     console.error(error);
   }
 
-  spinner.stopAndPersist();
+  if (source === 'file') {
+    spinner.stopAndPersist();
+  }
+
   if (source === 'memory') {
     return output;
   }
