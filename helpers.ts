@@ -145,7 +145,11 @@ export const buildPrismaSchema = async (
         ),
       );
     } else if (source === 'memory') {
-      firestoreData = JSON.parse(firestoreDataText);
+      try {
+        firestoreData = JSON.parse(firestoreDataText);
+      } catch (error) {
+        firestoreData = {} as FirestoreData;
+      }
     }
 
     const builder = createPrismaSchemaBuilder();
