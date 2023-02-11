@@ -7,6 +7,9 @@
     "firestore-prisma": "lib/bin/index.js"
   },
   "type": "module",
+  "main": "lib/index.js",
+  "module": "lib/index.js",
+  "types": "lib/index.d.ts",
   "scripts": {
     "build": "tsc",
     "debug": "npm run build && node lib/bin -f sample-firestore.json",

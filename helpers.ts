@@ -105,29 +105,41 @@ const buildJsonSchemaForField = ({
   }
 };
 
-export const buildPrismaSchema = async (options: ProgramArgs) => {
+export const buildPrismaSchema = async (
+  options: ProgramArgs,
+  source: 'file' | 'memory' = 'file',
+  firestoreDataText?: string,
+) => {
   let spinner = ora('Prisma Schema');
   spinner.color = 'green';
   spinner.prefixText = chalk.cyan('generate');
   spinner.start();
+  let firestoreData: FirestoreData;
+  let output;
   try {
-    const firestoreData: FirestoreData = JSON.parse(
-      await fs.promises.readFile(
-        path.join(process.cwd(), options.firestoreDataPath),
-        {
-          encoding: 'utf-8',
-        },
-      ),
-    );
+    if (source === 'file') {
+      firestoreData = JSON.parse(
+        await fs.promises.readFile(
+          path.join(process.cwd(), options.firestoreDataPath),
+          {
+            encoding: 'utf-8',
+          },
+        ),
+      );
+    } else if (source === 'memory') {
+      firestoreData = JSON.parse(firestoreDataText);
+    }
 
     const builder = createPrismaSchemaBuilder();
     builder.generator('client', 'prisma-client-js');
     builder.datasource('"postgresql"', '');
     const jsonSchema = buildJsonSchema(firestoreData);
-    await fs.promises.writeFile(
-      path.join(process.cwd(), options.jsonSchemaPath),
-      JSON.stringify(jsonSchema, null, 2),
-    );
+    if (source === 'file') {
+      await fs.promises.writeFile(
+        path.join(process.cwd(), options.jsonSchemaPath),
+        JSON.stringify(jsonSchema, null, 2),
+      );
+    }
 
     for (const [collName, collValue] of Object.entries(jsonSchema)) {
       builder.model(collName).field('id', 'String').attribute('id');
@@ -156,15 +168,20 @@ export const buildPrismaSchema = async (options: ProgramArgs) => {
       }
     }
 
-    const output = builder.print();
+    output = builder.print();
 
-    await fs.promises.writeFile(
-      path.join(process.cwd(), options.prismaSchemaPath),
-      output,
-    );
+    if (source === 'file') {
+      await fs.promises.writeFile(
+        path.join(process.cwd(), options.prismaSchemaPath),
+        output,
+      );
+    }
   } catch (error) {
     console.error(error);
   }
 
   spinner.stopAndPersist();
+  if (source === 'memory') {
+    return output;
+  }
 };
