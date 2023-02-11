@@ -1,6 +1,6 @@
 {
   "name": "firestore-prisma",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Convert Firestore data into a Prisma schema",
   "repository": "https://github.com/omar-dulaimi/firestore-prisma",
   "bin": {
