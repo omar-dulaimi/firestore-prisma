@@ -1,0 +1,81 @@
+{
+  "branches": ["master"],
+  "//": "Set explicitly. package.json's `repository` is npm's shorthand form, which @semantic-release/github parses into an empty $owner; its fail step then dies with \"Variable $owner of type String! was provided invalid value\" and masks the real error.",
+  "repositoryUrl": "https://github.com/omar-dulaimi/firestore-prisma.git",
+  "plugins": [
+    [
+      "@semantic-release/commit-analyzer",
+      {
+        "preset": "conventionalcommits",
+        "releaseRules": [
+          { "type": "feat", "release": "minor" },
+          { "type": "fix", "release": "patch" },
+          { "type": "perf", "release": "patch" },
+          { "type": "revert", "release": "patch" },
+          { "type": "refactor", "release": "patch" },
+          { "type": "docs", "release": false },
+          { "type": "style", "release": false },
+          { "type": "chore", "release": false },
+          { "type": "test", "release": false },
+          { "type": "build", "release": false },
+          { "type": "ci", "release": false },
+          { "scope": "breaking", "release": "major" }
+        ]
+      }
+    ],
+    [
+      "@semantic-release/release-notes-generator",
+      {
+        "preset": "conventionalcommits",
+        "presetConfig": {
+          "types": [
+            { "type": "feat", "section": "🚀 Features" },
+            { "type": "fix", "section": "🐛 Bug Fixes" },
+            { "type": "perf", "section": "⚡ Performance Improvements" },
+            { "type": "revert", "section": "⏪ Reverts" },
+            { "type": "refactor", "section": "♻️ Code Refactoring" },
+            { "type": "docs", "section": "📚 Documentation", "hidden": false },
+            { "type": "style", "section": "💄 Styles", "hidden": true },
+            { "type": "chore", "section": "🔧 Miscellaneous Chores", "hidden": true },
+            { "type": "test", "section": "✅ Tests", "hidden": true },
+            { "type": "build", "section": "🏗️ Build System", "hidden": true },
+            { "type": "ci", "section": "👷 CI/CD", "hidden": true }
+          ]
+        }
+      }
+    ],
+    ["@semantic-release/changelog", { "changelogFile": "CHANGELOG.md" }],
+    [
+      "@semantic-release/exec",
+      {
+        "//": "@semantic-release/npm only bumps the package.json at pkgRoot, so it would never touch the root manifest. That matters here because bin/index.ts reads its own version from an imported package.json, which resolveJsonModule compiles into lib/package.json from the ROOT manifest. Bump the root first and rebuild, or the 0.0.5 tarball reports `--version 0.0.4`. Runs before the npm plugin because prepare steps execute in plugin order.",
+        "prepareCmd": "npm version ${nextRelease.version} --no-git-tag-version --allow-same-version && ./package.sh"
+      }
+    ],
+    [
+      "@semantic-release/npm",
+      {
+        "//": "The repo root is `\"private\": true` and stays that way; package.sh flips the copy in package/ to false. @semantic-release/npm reads pkgRoot's manifest, and skips publishing outright when it sees private true, so pkgRoot must be the built directory.",
+        "pkgRoot": "package"
+      }
+    ],
+    [
+      "@semantic-release/git",
+      {
+        "//": "package-lock.json is listed because `npm version` rewrites the version in it too, and leaving it behind would put the manifest and the lockfile out of step.",
+        "assets": ["package.json", "package-lock.json", "CHANGELOG.md"],
+        "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+      }
+    ],
+    [
+      "@semantic-release/github",
+      {
+        "successComment": "🎉 Released in [v${nextRelease.version}](https://www.npmjs.com/package/firestore-prisma/v/${nextRelease.version}).",
+        "//": "No failure issue: the workflow run already reports it, and the fail step's own GraphQL call has erred here before and masked the real cause.",
+        "failComment": false,
+        "failTitle": false,
+        "labels": ["released"]
+      }
+    ]
+  ]
+}

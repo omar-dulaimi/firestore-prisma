@@ -1,10 +1,14 @@
 #!/bin/bash
+# Fail loudly. Without `set -e` a missing tsc left package/ with no lib/ at all and the
+# script still exited 0, so a pipeline would happily publish a tarball containing no code.
+set -euo pipefail
 START_TIME=$SECONDS
 
-echo "Buidling package..."
-rm -r lib
-tsc
-rm -r package
+echo "Building package..."
+rm -rf lib package
+# Explicit path, not bare `tsc`: node_modules/.bin is only on PATH when this script is
+# started by `npm run`, and CI invokes it directly.
+./node_modules/.bin/tsc
 mkdir package
 
 echo "Copying files..."

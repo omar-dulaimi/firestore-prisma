@@ -14,7 +14,8 @@
     "build": "tsc",
     "debug": "npm run build && node lib/bin -f sample-firestore.json",
     "clean": "rm -rf lib",
-    "package:publish": "./package.sh && cd package && npm publish"
+    "package:publish": "./package.sh && cd package && npm publish",
+    "release": "semantic-release"
   },
   "author": {
     "name": "Omar Dulaimi",
@@ -35,9 +36,18 @@
     "ora": "^6.1.2"
   },
   "devDependencies": {
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/commit-analyzer": "^13.0.1",
+    "@semantic-release/exec": "^7.1.0",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^12.0.9",
+    "@semantic-release/npm": "^13.1.5",
+    "@semantic-release/release-notes-generator": "^14.1.1",
     "@types/clear": "^0.1.2",
     "@types/figlet": "^1.5.5",
     "@types/node": "^17.0.35",
+    "conventional-changelog-conventionalcommits": "^9.3.1",
+    "semantic-release": "^25.0.8",
     "typescript": "^5.3.3"
   },
   "engines": {

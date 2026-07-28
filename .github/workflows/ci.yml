@@ -1,0 +1,124 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_call:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build on Node ${{ matrix.node-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The whole of `engines` (^18.20.0 || >=20.10.0), floors included. The floors are not
+        # decoration: they are the exact releases that first accepted the `with { type: 'json' }`
+        # import attribute this CLI cannot start without, so they are the legs most likely to
+        # break. 22.x and 24.x float so a new minor cannot slip past untested.
+        # These legs exist only because `engines` claims them. Drop a version from `engines`
+        # and drop it here in the same commit. No step in this file is keyed to a specific
+        # matrix value, so removing one cannot silently stop a check from running.
+        node-version: ['18.20.x', '20.10.x', '22.x', '24.x']
+    steps:
+      - uses: actions/checkout@v5
+
+      # Deliberately no `registry-url`, in this job or any other. It writes an .npmrc holding
+      # an authToken placeholder, and that placeholder breaks the OIDC exchange release.yml
+      # depends on. There is no package-manager action to pin here either: this repo uses the
+      # npm that ships with Node, so nothing can self-upgrade underneath an older leg.
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build and typecheck
+        # `build` is `tsc` with emit, so this is the typecheck too: a type error fails it.
+        # There is deliberately no lint or test step. This repo defines no `lint` and no `test`
+        # script, and depends on neither a linter nor a test runner. A step invoking one would
+        # only pretend to check something. That is also why the job below carries the weight.
+        run: npm run build
+
+  packaged-artifact:
+    name: Packaged artifact on Node ${{ matrix.node-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ['18.20.x', '20.10.x', '22.x', '24.x']
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build the directory that actually gets published
+        # The real packaging script, not a reimplementation of it. It compiles into lib/, copies
+        # lib/ plus package.json, README and LICENSE into package/, and flips "private": true to
+        # false in that copy. Whatever it gets wrong, this job inherits, which is the point.
+        run: ./package.sh
+
+      - name: Pack the tarball
+        id: pack
+        # Packed to a destination outside package/ so that a tarball can never be swept into the
+        # next one, and so package/ stays byte for byte what release.yml will publish.
+        run: |
+          set -euo pipefail
+          npm pack ./package --pack-destination "$RUNNER_TEMP"
+          echo "tarball=$RUNNER_TEMP/$(cd "$RUNNER_TEMP" && ls firestore-prisma-*.tgz)" >> "$GITHUB_OUTPUT"
+
+      - name: Install the tarball into an empty project and run the README command
+        env:
+          TARBALL: ${{ steps.pack.outputs.tarball }}
+        run: |
+          set -euo pipefail
+
+          # An empty directory, deliberately not the repo. Nothing here resolves through the
+          # repo's node_modules, so a dependency the tarball failed to declare, or a file the
+          # tarball failed to include, fails here instead of in someone else's project.
+          consumer="$RUNNER_TEMP/consumer"
+          rm -rf "$consumer"
+          mkdir -p "$consumer"
+          cd "$consumer"
+          npm init -y > /dev/null
+          cp "$GITHUB_WORKSPACE/sample-firestore.json" firestore.json
+          npm install --no-audit --no-fund "$TARBALL"
+
+          # The README's headline command. Invoked through the installed bin rather than as
+          # `npx firestore-prisma`, because bare npx will fall back to downloading the last
+          # published version, and then this job would be testing that instead of this commit.
+          ./node_modules/.bin/firestore-prisma --firestoreDataPath firestore.json
+
+          # Exit 0 is not evidence on its own. Assert it produced what it promises to produce.
+          test -s schema.prisma
+          test -s schema.json
+          grep -q '^model ' schema.prisma
+
+          # lib/package.json is a compiled copy of the manifest, and is the only thing the CLI
+          # reads its own version from. If it drifts from the manifest published beside it, the
+          # release announces someone else's version number.
+          installed="$(node -p "require('./node_modules/firestore-prisma/package.json').version")"
+          compiled="$(node -p "require('./node_modules/firestore-prisma/lib/package.json').version")"
+          test "$compiled" = "$installed"
+
+          # Redirected to a file rather than piped: the CLI exits from inside the version
+          # handler, and a pipe can lose the tail of that write.
+          ./node_modules/.bin/firestore-prisma --version > version.out
+          grep -qx "$installed" version.out
+
+          echo "Packaged artifact ran clean on $(node -v), reporting version $installed"

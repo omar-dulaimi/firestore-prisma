@@ -1,0 +1,62 @@
+name: Release
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  # Nothing is published unless the build and the packaged-artifact jobs have both passed on
+  # this exact commit. The packaged-artifact job is the one that matters here: 0.0.4 shipped a
+  # CLI that could not start at all on Node 22 or 24, and nothing in this repo would have
+  # caught it, because nothing ever ran the tarball.
+  verify:
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      # Required. @semantic-release/npm asks GitHub for an OIDC token and npm exchanges it for
+      # a short-lived publish credential. Without this permission the request fails, and there
+      # is no token to fall back on because the npm account disallows them outright.
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # Node 24 is not a preference. The exchange is performed by npm itself during
+      # `npm publish`, and it needs npm >= 11.5.1; Node 22 still bundles an older npm.
+      # Deliberately no `registry-url`: it writes an .npmrc authToken placeholder that breaks
+      # the exchange.
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24.x'
+          cache: npm
+
+      - run: npm ci
+
+      # package/ is gitignored, so it does not exist on a fresh checkout, and pkgRoot points at
+      # it. @semantic-release/npm reads that manifest during verifyConditions, before it does
+      # anything else, and aborts the whole run if it is missing. So build it up front.
+      # The prepareCmd in .releaserc.json rebuilds it once the version has been bumped.
+      - name: Build the publishable package
+        run: ./package.sh
+
+      # No NPM_TOKEN. Every token is dead on this account, and setting one here would write a
+      # conflicting .npmrc and break the OIDC exchange that replaced it. GITHUB_TOKEN stays:
+      # it is what tags the release, writes the notes and pushes the release commit.
+      - name: Semantic release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run release
