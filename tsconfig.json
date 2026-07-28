@@ -13,7 +13,6 @@
     "outDir": "./lib",
     "rootDir": ".",
     "types": ["node"],
-    "typeRoots": ["types.ts"],
     "skipLibCheck": true,
     "experimentalDecorators": true
   },

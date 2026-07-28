@@ -200,6 +200,7 @@ export const buildPrismaSchema = async (
     }
   } catch (error) {
     console.error(error);
+    process.exitCode = 1;
   }
 
   if (source === 'file') {

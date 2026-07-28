@@ -6,7 +6,7 @@ import { Command } from 'commander';
 import figlet from 'figlet';
 import process from 'process';
 import main from '../main.js';
-import packageJson from '../package.json' assert { type: 'json' };
+import packageJson from '../package.json' with { type: 'json' };
 import { ProgramArgs } from '../types.js';
 
 clear();
@@ -41,4 +41,5 @@ const options: ProgramArgs = program.opts();
 
 main(options).catch((error) => {
   console.log('\n\n\r', chalk.red('Failed') + error + '\n\n');
+  process.exitCode = 1;
 });
