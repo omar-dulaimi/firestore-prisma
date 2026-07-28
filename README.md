@@ -7,12 +7,6 @@
 
 Converts Firestore data file to a Prisma schema
 
-<p align="center">
-  <a href="https://www.buymeacoffee.com/omardulaimi">
-    <img src="https://cdn.buymeacoffee.com/buttons/default-yellow.png" alt="Buy Me A Coffee" height="41" width="174">
-  </a>
-</p>
-
 ## Table of Contents
 
 - [Firestore Prisma](#firestore-prisma)
